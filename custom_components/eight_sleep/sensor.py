@@ -88,6 +88,10 @@ EIGHT_OVERRIDE_LEVEL_SENSOR_MAP = {
     "now_level": "bedtime",
 }
 
+EIGHT_ACTIVE_LEVEL_SENSOR_MAP = {
+    "active_level": "target_heating_level",
+}
+
 EIGHT_USER_SENSORS = [
     "current_sleep_fitness_score",
     "current_sleep_quality_score",
@@ -106,6 +110,7 @@ EIGHT_USER_SENSORS = [
     "side",
     "routines",
     "now_level",
+    "active_level",
     "bedtime_level",
     "asleep_level",
     "dawn_level",
@@ -333,7 +338,7 @@ class EightUserSensor(EightSleepBaseEntity, SensorEntity):
             self._attr_native_unit_of_measurement = NAME_MAP[self._sensor].measurement
             self._attr_device_class = NAME_MAP[self._sensor].device_class
             self._attr_state_class = NAME_MAP[self._sensor].state_class
-        elif self._sensor in EIGHT_SMART_STAGE_SENSOR_MAP or self._sensor in EIGHT_OVERRIDE_LEVEL_SENSOR_MAP:
+        elif self._sensor in EIGHT_SMART_STAGE_SENSOR_MAP or self._sensor in EIGHT_OVERRIDE_LEVEL_SENSOR_MAP or self._sensor in EIGHT_ACTIVE_LEVEL_SENSOR_MAP:
             self._attr_native_unit_of_measurement = "°"
             self._attr_state_class = SensorStateClass.MEASUREMENT
         elif (
@@ -377,7 +382,10 @@ class EightUserSensor(EightSleepBaseEntity, SensorEntity):
             override_key = EIGHT_OVERRIDE_LEVEL_SENSOR_MAP[self._sensor]
             raw_value = self._user_obj.override_levels.get(override_key)
             if raw_value is None:
-                raw_value = self._user_obj.target_heating_level
+                return None
+            return round(raw_value / 10)
+        if self._sensor in EIGHT_ACTIVE_LEVEL_SENSOR_MAP:
+            raw_value = self._user_obj.target_heating_level
             if raw_value is None:
                 return None
             return round(raw_value / 10)
@@ -423,14 +431,18 @@ class EightUserSensor(EightSleepBaseEntity, SensorEntity):
         elif self._sensor in EIGHT_OVERRIDE_LEVEL_SENSOR_MAP and self._user_obj:
             override_key = EIGHT_OVERRIDE_LEVEL_SENSOR_MAP[self._sensor]
             raw_value = self._user_obj.override_levels.get(override_key)
-            source = "overrideLevels"
-            if raw_value is None:
-                raw_value = self._user_obj.target_heating_level
-                source = "target_heating_level"
             return {
                 "raw_value": raw_value,
                 "api_field": f"overrideLevels.{override_key}",
-                "source": source,
+                "source": "overrideLevels",
+                "has_override": raw_value is not None,
+            }
+        elif self._sensor in EIGHT_ACTIVE_LEVEL_SENSOR_MAP and self._user_obj:
+            raw_value = self._user_obj.target_heating_level
+            return {
+                "raw_value": raw_value,
+                "api_field": f"{self._user_obj.corrected_side_for_key}TargetHeatingLevel",
+                "source": "target_heating_level",
             }
         elif self._sensor in EIGHT_SMART_STAGE_SENSOR_MAP and self._user_obj:
             raw_value = self._user_obj.smart_schedule.get(EIGHT_SMART_STAGE_SENSOR_MAP[self._sensor]) if self._user_obj.smart_schedule else None
