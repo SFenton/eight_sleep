@@ -33,7 +33,7 @@
         },
         "sleep_stage": {
           "name": "Sleep Stage",
-          "description": "Select which sleep stage to set the temperature for."
+          "description": "Select current, tonight override, or smart sleep stage to set the temperature for."
         }
       }
     },

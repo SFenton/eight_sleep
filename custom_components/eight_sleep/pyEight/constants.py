@@ -61,6 +61,7 @@ CURRENT_STATE_JSON = """
         }"""
 
 POSSIBLE_SLEEP_STAGES = ["bedTimeLevel", "initialSleepLevel", "finalSleepLevel"]
+POSSIBLE_OVERRIDE_STAGES = ["bedtime"]
 MIN_TEMP_F = 55
 MAX_TEMP_F = 110
 MIN_TEMP_C = 13

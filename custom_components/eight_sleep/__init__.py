@@ -313,6 +313,10 @@ class EightSleepBaseEntity(CoordinatorEntity[DataUpdateCoordinator]):
             await self._generic_service_call(
                 lambda: self._user_obj.set_heating_level(target, duration)
             )
+        elif sleep_stage == "override_bedtime":
+            await self._generic_service_call(
+                lambda: self._user_obj.set_override_heating_level(target, "bedtime")
+            )
         else:
             await self._generic_service_call(
                 lambda: self._user_obj.set_smart_heating_level(target, sleep_stage)

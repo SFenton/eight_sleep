@@ -27,6 +27,8 @@ heat_set:
           options:
             - label: Set Current Temperature
               value: current
+            - label: Set Now Override
+              value: override_bedtime
             - label: Set Bedtime Temperature
               value: bedTimeLevel
             - label: Set Early Temperature

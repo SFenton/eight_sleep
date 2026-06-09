@@ -13,7 +13,7 @@ import logging
 import statistics
 from typing import TYPE_CHECKING, Any
 
-from .constants import APP_API_URL, DATE_FORMAT, DATE_TIME_ISO_FORMAT, CLIENT_API_URL, POSSIBLE_SLEEP_STAGES
+from .constants import APP_API_URL, DATE_FORMAT, DATE_TIME_ISO_FORMAT, CLIENT_API_URL, POSSIBLE_OVERRIDE_STAGES, POSSIBLE_SLEEP_STAGES
 from .exceptions import RequestError
 from .util import heating_level_to_temp
 
@@ -36,6 +36,7 @@ class EightUser:  # pylint: disable=too-many-public-methods
         self.trends: list[dict[str, Any]] = []
         self.alarms: list[dict[str, Any]] = []
         self.routines: list[dict[str, Any]] = []  # Kept for backward compat, always empty now
+        self.override_levels: dict[str, Any] = {}
         self.smart_schedule: dict[str, Any] | None = None
         self.next_alarm = None
         self.next_alarm_id = None
@@ -719,6 +720,7 @@ class EightUser:  # pylint: disable=too-many-public-methods
                     self.current_side_temp = None
                 
                 # Update smart schedule (Autopilot)
+                self.override_levels = resp.get("overrideLevels") or {}
                 self.smart_schedule = resp.get("smart")
                 _LOGGER.debug(f"User {self.user_id} Smart Schedule: {self.smart_schedule}")
 
@@ -775,6 +777,23 @@ class EightUser:  # pylint: disable=too-many-public-methods
         data = {"smart": sleep_stages_levels}
         await self.device.api_request("PUT", url, data=data)
         self.smart_schedule = sleep_stages_levels
+
+    async def set_override_heating_level(self, level: int, override_stage: str) -> None:
+        """Set a tonight-only temperature override level."""
+        if override_stage not in POSSIBLE_OVERRIDE_STAGES:
+            raise Exception(
+                f"Invalid override stage {override_stage}. Should be one of {POSSIBLE_OVERRIDE_STAGES}"
+            )
+        url = APP_API_URL + f"v1/users/{self.user_id}/temperature"
+        data = await self.device.api_request("GET", url)
+        override_levels = data.get("overrideLevels") or {}
+        # Catch bad low inputs
+        level = max(-100, level)
+        # Catch bad high inputs
+        level = min(100, level)
+        override_levels[override_stage] = level
+        await self.device.api_request("PUT", url, data={"overrideLevels": override_levels})
+        self.override_levels = override_levels
 
     async def increment_heating_level(self, offset: int) -> None:
         """Increment heating level with offset"""

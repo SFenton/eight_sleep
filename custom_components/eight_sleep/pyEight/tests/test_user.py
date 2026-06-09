@@ -76,6 +76,20 @@ class TestEightUser(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(self.user.smart_schedule, {"bedTimeLevel": -10, "initialSleepLevel": 30, "finalSleepLevel": 20})
 
+    async def test_set_override_heating_level_updates_local_overrides(self):
+        current_overrides = {"bedtime": 0}
+        self.mock_eight_device.api_request = AsyncMock(side_effect=[{"overrideLevels": current_overrides.copy()}, {}])
+
+        await self.user.set_override_heating_level(level=-10, override_stage="bedtime")
+
+        expected_url = f"{APP_API_URL}v1/users/{self.user_id}/temperature"
+        self.assertEqual(self.mock_eight_device.api_request.call_args_list[0], call("GET", expected_url))
+        self.assertEqual(
+            self.mock_eight_device.api_request.call_args_list[1],
+            call("PUT", expected_url, data={"overrideLevels": {"bedtime": -10}}),
+        )
+        self.assertEqual(self.user.override_levels, {"bedtime": -10})
+
     @patch('custom_components.eight_sleep.pyEight.user.datetime') # Mock datetime within user.py
     async def test_set_away_mode_start(self, mock_datetime):
         self.mock_eight_device.api_request = AsyncMock(return_value={})
