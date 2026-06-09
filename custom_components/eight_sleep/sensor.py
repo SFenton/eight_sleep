@@ -78,6 +78,12 @@ ATTR_ALARM_ID = "Alarm ID"
 
 _LOGGER = logging.getLogger(__name__)
 
+EIGHT_SMART_STAGE_SENSOR_MAP = {
+    "bedtime_level": "bedTimeLevel",
+    "asleep_level": "initialSleepLevel",
+    "dawn_level": "finalSleepLevel",
+}
+
 EIGHT_USER_SENSORS = [
     "current_sleep_fitness_score",
     "current_sleep_quality_score",
@@ -95,6 +101,9 @@ EIGHT_USER_SENSORS = [
     "presence_end",
     "side",
     "routines",
+    "bedtime_level",
+    "asleep_level",
+    "dawn_level",
 ]
 
 EIGHT_HEAT_SENSORS = ["bed_state"]
@@ -319,6 +328,9 @@ class EightUserSensor(EightSleepBaseEntity, SensorEntity):
             self._attr_native_unit_of_measurement = NAME_MAP[self._sensor].measurement
             self._attr_device_class = NAME_MAP[self._sensor].device_class
             self._attr_state_class = NAME_MAP[self._sensor].state_class
+        elif self._sensor in EIGHT_SMART_STAGE_SENSOR_MAP:
+            self._attr_native_unit_of_measurement = "°"
+            self._attr_state_class = SensorStateClass.MEASUREMENT
         elif (
             self._sensor == "sleep_stage"
             or self._sensor == "bed_state_type"
@@ -356,6 +368,11 @@ class EightUserSensor(EightSleepBaseEntity, SensorEntity):
             return self._user_obj.current_sleep_stage
         if self._sensor == "routines":
             return len(self._user_obj.alarms) if self._user_obj.alarms else 0
+        if self._sensor in EIGHT_SMART_STAGE_SENSOR_MAP:
+            raw_value = self._user_obj.smart_schedule.get(EIGHT_SMART_STAGE_SENSOR_MAP[self._sensor]) if self._user_obj.smart_schedule else None
+            if raw_value is None:
+                return None
+            return round(raw_value / 10)
 
         return None
 
@@ -390,6 +407,12 @@ class EightUserSensor(EightSleepBaseEntity, SensorEntity):
                     "thermal": alarm.get("thermal", {}),
                 })
             return {"alarms": alarms_data}
+        elif self._sensor in EIGHT_SMART_STAGE_SENSOR_MAP and self._user_obj:
+            raw_value = self._user_obj.smart_schedule.get(EIGHT_SMART_STAGE_SENSOR_MAP[self._sensor]) if self._user_obj.smart_schedule else None
+            return {
+                "raw_value": raw_value,
+                "api_field": EIGHT_SMART_STAGE_SENSOR_MAP[self._sensor],
+            }
 
         if attr is None:
             # Skip attributes if sensor type doesn't support

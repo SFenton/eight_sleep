@@ -58,6 +58,24 @@ class TestEightUser(unittest.IsolatedAsyncioTestCase):
         # Call 3: set_heating_level (timeBased)
         self.assertEqual(calls[2], call('PUT', expected_url, data={'timeBased': {'level': 50, 'durationSeconds': 7200}}))
 
+    async def test_set_smart_heating_level_updates_local_schedule(self):
+        current_schedule = {
+            "bedTimeLevel": -10,
+            "initialSleepLevel": 10,
+            "finalSleepLevel": 20,
+        }
+        self.mock_eight_device.api_request = AsyncMock(side_effect=[{"smart": current_schedule.copy()}, {}])
+
+        await self.user.set_smart_heating_level(level=30, sleep_stage="initialSleepLevel")
+
+        expected_url = f"{APP_API_URL}v1/users/{self.user_id}/temperature"
+        self.assertEqual(self.mock_eight_device.api_request.call_args_list[0], call("GET", expected_url))
+        self.assertEqual(
+            self.mock_eight_device.api_request.call_args_list[1],
+            call("PUT", expected_url, data={"smart": {"bedTimeLevel": -10, "initialSleepLevel": 30, "finalSleepLevel": 20}}),
+        )
+        self.assertEqual(self.user.smart_schedule, {"bedTimeLevel": -10, "initialSleepLevel": 30, "finalSleepLevel": 20})
+
     @patch('custom_components.eight_sleep.pyEight.user.datetime') # Mock datetime within user.py
     async def test_set_away_mode_start(self, mock_datetime):
         self.mock_eight_device.api_request = AsyncMock(return_value={})
